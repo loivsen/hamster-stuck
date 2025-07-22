@@ -37,7 +37,7 @@ export class MyElement extends LitElement {
   
   // Will return true if A is divisible by B (A % B === 0).
 
-  #print() {
+  #save() {
     this._from = Number(this._fromInput.value);
     this._to = Number(this._toInput.value);
   }
@@ -71,7 +71,7 @@ export class MyElement extends LitElement {
     <div>
       <input id="from" type="number" placeholder="From" value="10">
       <input id="to" type="number" placeholder="To" value="30">
-      <button @click=${() => this.#print()}>Fizzbuzz</button>
+      <button @click=${() => this.#save()}>Fizzbuzz</button>
       ${this.#renderLoop()}
     </div>
     `;
