@@ -1,94 +1,22 @@
-import { LitElement, css, html, nothing } from 'lit'
+import { LitElement, css, html } from 'lit'
 import { map } from 'lit-html/directives/map.js';
 import { customElement, query, state } from 'lit/decorators.js'
 import { range } from 'lit/directives/range.js';
-//import './components/hello-world'
+import { until } from 'lit/directives/until.js';
 
-/**
- * An example element.
- *
- * @slot - This element has a slot
- * @csspart button - The button
- */
 @customElement('my-element')
 export class MyElement extends LitElement {
-
   @state()
   private _from = 0
 
   @state()
   private _to = 0
 
-  @state()
-  private _isDivisble?: boolean;
-
-
   @query('#from')
   private _fromInput!: HTMLInputElement;
   
   @query('#to')
   private _toInput!: HTMLInputElement;
-
-  
-  @query('#num')
-  private _numInput!: HTMLInputElement;
-  
-  @query('#divBy')
-  private _divByInput!: HTMLInputElement;
-  
-  
-  // #URL = 'https://preview-4-9.zegeba.com/fizz-buzz/is-divisible';
-  
-  // async _apiRequest() {
-  //   fetch(this.#URL, {
-  //     method: 'POST',
-  //     body: ''
-  //   })
-  //   .then((response) => response.json())
-  //   .then((json) => console.log(json));
-  // }
-
-  #print() {
-    this._from = Number(this._fromInput.value);
-    this._to = Number(this._toInput.value);
-    
-    // while(index <= end) {
-    //   console.log(index);
-    //   index++;
-    // } 
-  }
-
-  #check() {
-    const number = Number(this._numInput.value);
-    const divisibleBy = Number(this._divByInput.value);
-
-    this.#request(number, divisibleBy)
-  }
-
-  async #request(number: number, divisibleBy: number) {
-    const url = 'https://preview-4-9.zegeba.com/fizz-buzz/is-divisible';
-    try {
-      const response = await fetch(url, {
-        // I had to look up how to setup POST for fetch, as I couldn't remember it blindly.
-        // I got it from here: https://jsonplaceholder.typicode.com/guide/
-        method: "POST",
-        body: JSON.stringify({number, divisibleBy}),
-        headers: { 'Content-type': 'application/json; charset=UTF-8' },
-      });
-
-      if (response.status === 503) {
-        // Apparently there is a hamster stuck...
-        this.#request(number, divisibleBy); // Just retry?
-        throw new Error("Hamster stuck");
-      }
-
-      const json = await response.json();
-      this._isDivisble = json.isDivisible;
-    } catch(e) {
-      console.log('meow',e);
-    }
-  
-  }
   
   // Implement a simple UI which contains the following elements:
   // 1. Two input fields "From" and "To"
@@ -109,6 +37,35 @@ export class MyElement extends LitElement {
   
   // Will return true if A is divisible by B (A % B === 0).
 
+  #print() {
+    this._from = Number(this._fromInput.value);
+    this._to = Number(this._toInput.value);
+  }
+
+
+  async #request(number: number, divisibleBy: number): Promise<any> {
+    const url = 'https://preview-4-9.zegeba.com/fizz-buzz/is-divisible';
+    try {
+      const response = await fetch(url, {
+        // I had to look up how to setup POST for fetch, as I couldn't remember it blindly.
+        // I got it from here: https://jsonplaceholder.typicode.com/guide/
+        method: "POST",
+        body: JSON.stringify({number, divisibleBy}),
+        headers: { 'Content-type': 'application/json; charset=UTF-8' },
+      });
+
+      if (response.status === 503) {
+        // Apparently there is a hamster stuck...
+        return this.#request(number, divisibleBy);
+      }
+
+      return response.json();
+    } catch(e) {
+      console.log('Error:', e);
+    }
+  
+  }
+
   render() {
     return html`
     <div>
@@ -116,12 +73,6 @@ export class MyElement extends LitElement {
       <input id="to" type="number" placeholder="To" value="30">
       <button @click=${() => this.#print()}>Fizzbuzz</button>
       ${this.#renderLoop()}
-    </div>
-    <div>
-      <input id="num" type="number" placeholder="number">
-      <input id="divBy" type="number" placeholder="Divisible by">
-      <button @click=${() => this.#check()}>Check</button>
-      ${this._isDivisble}
     </div>
     `;
   }
@@ -131,17 +82,19 @@ export class MyElement extends LitElement {
     if (this._from >= this._to) return;
 
     return map(range(this._from, this._to + 1), (i: number) => html`
-      <div>${this.#renderFizzbuzz(i)}</div>
+      <div>${until(this.#renderFizzbuzz(i))}</div>
     `)
   }
 
 
-  #renderFizzbuzz(num: number) {
-    if (num % 3 === 0 && num % 5 === 0) return 'Both';
-    if (num % 3 === 0) return 'Fizz';
-    if (num % 5 === 0) return 'Buzz';
-    return num;   
-    
+  async #renderFizzbuzz(num: number) {
+    const isFizz = await this.#request(num, 3);
+    const isBuzz = await this.#request(num, 5);
+
+    if (isFizz.isDivisible && isBuzz.isDivisible) return "FizzBuzz" 
+    if (isFizz.isDivisible) return "Fizz"
+    if (isBuzz.isDivisible) return "Buzz"
+    return num;
   }
 
   static styles = css`
@@ -169,15 +122,6 @@ export class MyElement extends LitElement {
     button:focus,
     button:focus-visible {
       outline: 4px auto -webkit-focus-ring-color;
-    }
-
-    @media (prefers-color-scheme: light) {
-      a:hover {
-        color: #747bff;
-      }
-      button {
-        background-color: #f9f9f9;
-      }
     }
   `
 }
